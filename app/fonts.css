@@ -1,0 +1,15 @@
+/*
+ * How this app is set: headings and the diary's own pages in the Mac's serif,
+ * everything else in the system's own sans-serif. Both are faces every Mac
+ * already has, so nothing here reaches the network.
+ *
+ * Tellop replaces this whole file when the person picks another look.
+ */
+
+:root {
+  --reading: 16px;
+  --font-display: ui-serif, "New York", Georgia, serif;
+  /* The heading weight: a system serif has a real semibold. */
+  --display-weight: 600;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}

@@ -1,0 +1,48 @@
+/*
+ * The app's own chosen look: warm paper, dark brown ink, a deep night-blue
+ * button and a soft blue mark for the days that have a page.
+ *
+ * Whole-file: Tellop still replaces this file whole when the person picks another
+ * look, so anything added here is gone the next time the look changes. Everything
+ * else reads these names - see app/globals.css.
+ *
+ * The app is light only. It has no dark set, and nothing in it turns one on.
+ */
+
+:root {
+  color-scheme: light;
+  --background: #f7f3ec;
+  --foreground: #26221d;
+  --card: #fffdf9;
+  --card-foreground: #26221d;
+  --popover: #fffdf9;
+  --popover-foreground: #26221d;
+  --primary: #2f3a56;
+  --primary-foreground: #ffffff;
+  --secondary: #efe9df;
+  --secondary-foreground: #26221d;
+  --muted: #efe9df;
+  --muted-foreground: #6b6258;
+  --accent: #ebe4d8;
+  --accent-foreground: #26221d;
+  --destructive: #b4363a;
+  --destructive-foreground: #ffffff;
+  --border: #e4dccf;
+  --input: #e4dccf;
+  --ring: #2f3a56;
+  --chart-1: #2f3a56;
+  --chart-2: #5b6b9a;
+  --chart-3: #8a6a3d;
+  --chart-4: #4f7a5c;
+  --chart-5: #9a5b78;
+  --sidebar: #f7f3ec;
+  --sidebar-foreground: #26221d;
+  --sidebar-primary: #2f3a56;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ebe4d8;
+  --sidebar-accent-foreground: #26221d;
+  --sidebar-border: #e4dccf;
+  --sidebar-ring: #2f3a56;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(38, 34, 29, 0.05), 0 8px 24px -8px rgba(38, 34, 29, 0.12);
+}

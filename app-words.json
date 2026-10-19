@@ -1,0 +1,19 @@
+{
+  "record": "tellop-app-words",
+  "version": 1,
+  "keys": [],
+  "records": [
+    {
+      "name": "diary_pages",
+      "label": { "tr": "Günlük sayfaları", "en": "Diary pages" },
+      "fields": [
+        { "name": "owner_id", "label": { "tr": "Sahip", "en": "Owner" } },
+        { "name": "book", "label": { "tr": "Defter", "en": "Book" } },
+        { "name": "day", "label": { "tr": "Gün", "en": "Day" } },
+        { "name": "text", "label": { "tr": "Yazı", "en": "Writing" } },
+        { "name": "created_at", "label": { "tr": "Yazıldığı an", "en": "Written at" } },
+        { "name": "updated_at", "label": { "tr": "Son değişiklik", "en": "Last changed" } }
+      ]
+    }
+  ]
+}
