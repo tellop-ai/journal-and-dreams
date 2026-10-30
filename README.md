@@ -1,6 +1,6 @@
 # Journal and dreams
 
-A private journal and dream diary: one page a day in each book and a month calendar of the days you wrote. Based on the journal and dream pages of OpenGnothia (MIT).
+A private journal and dream diary: one page a day in each book and a month calendar of the days you wrote. Based on the journal and dream pages of OpenGnothia (MIT). If you put it online, everyone you let in shares these same diaries.
 
 This app was made with Tellop, the app builder by Pathnomic Labs, on Tellop's
 starting kit: Next.js and React, with Node's own SQLite for what the app keeps.

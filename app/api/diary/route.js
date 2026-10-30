@@ -15,6 +15,13 @@ import { readJsonBody } from '../../../lib/diary/request.js';
  * The owner is chosen on the server, never taken from the request. Refusals
  * travel as message keys, never as sentences: the words are chosen in the
  * reader's language where they are displayed.
+ *
+ * No role is checked here; the screens draw only the presses a role may use
+ * (`lib/diary/roles.js`). Online the host refuses a Viewer's save or delete,
+ * and a Member's save over a page the Member did not write. A Member's delete
+ * of such a page is not refused: the host leaves the page and counts nothing
+ * removed, and `deletePageFor` reads it once more and answers that as the same
+ * refusal. Either way this address answers 403 with its own words.
  */
 export const dynamic = 'force-dynamic';
 
@@ -32,9 +39,23 @@ function json(body, status = 200) {
   });
 }
 
+/**
+ * A refusal's status: 403 for a change this person may not make (a Viewer's
+ * save or delete, a Member's save over or delete of a page the Member did not
+ * write), with its own words, "You cannot change this."; 503 for a save nobody
+ * could confirm; 400 for the rest.
+ *
+ * @param {string} key
+ */
+function statusOf(key) {
+  if (key === 'error.cannotChange') return 403;
+  if (key === 'error.saveUnconfirmed') return 503;
+  return 400;
+}
+
 /** @param {unknown} error */
 function refusal(error) {
-  if (error instanceof DataError) return json({ problem: error.messageKey }, error.messageKey === 'error.saveUnconfirmed' ? 503 : 400);
+  if (error instanceof DataError) return json({ problem: error.messageKey }, statusOf(error.messageKey));
   return json({ problem: 'error.saveFailed' }, 500);
 }
 
@@ -58,7 +79,8 @@ export async function POST(request) {
 
 /**
  * Deletes a day's page: `{ book, day }`. A page that is not there answers
- * "already gone", not an error.
+ * "already gone", not an error; a page still there after a delete that removed
+ * nothing answers 403, "You cannot change this." (see `deletePageFor`).
  *
  * @param {Request} request
  */

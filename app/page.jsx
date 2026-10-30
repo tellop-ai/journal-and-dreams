@@ -23,6 +23,8 @@ import {
 } from '../lib/diary/bounds.js';
 import { changedWhen, dayDate, fullDate } from '../lib/diary/dates.js';
 import { DIARY_OWNER } from '../lib/diary/owner.js';
+import { canAdd, canChange, dayScreen, personNotice, writeTodayShown } from '../lib/diary/roles.js';
+import { visitor } from '../lib/diary/visitor.js';
 import { formatDecimal, formatMonth } from '../lib/format.js';
 import { getLocale, t } from '../lib/i18n/index.js';
 import { cn } from '../lib/utils.js';
@@ -42,6 +44,12 @@ import { PageForm } from './page-form.jsx';
  * `data-tellop-app-marker` is what Tellop's health probe looks for: keep it on
  * the outermost element. Every read goes through `lib/data/` and names the one
  * owner; opening any of these addresses saves nothing.
+ *
+ * Everyone reads the same diary. What a person may press comes from their role
+ * (`lib/diary/roles.js`), asked once per visit before any page is read: a
+ * Member writes only on a day with no page, a Viewer only reads, and when the
+ * answer about the person cannot be read nobody gets a press that saves and one
+ * line says so.
  */
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +102,8 @@ export default async function Page({ searchParams }) {
   const day = askedDay !== undefined && dayProblem(askedDay) === null ? askedDay : null;
   const askedMonth = single(params.month);
   const month = day !== null ? monthOf(day) : clampMonth(isMonth(askedMonth) ? askedMonth : monthOf(today));
+  const { role } = await visitor();
+  const notice = personNotice(role);
 
   return (
     <main className="diary" data-tellop-app-marker="ok">
@@ -101,18 +111,23 @@ export default async function Page({ searchParams }) {
         <h1>{t('app.title', locale)}</h1>
         <p className="tagline">{t('app.tagline', locale)}</p>
       </header>
+      {notice === null ? null : (
+        <p role="alert" className="problem mb-4">
+          {t(notice, locale)}
+        </p>
+      )}
       <BookTabs book={book} month={month} locale={locale}>
         {day === null ? (
-          <MonthView book={book} month={month} today={today} done={single(params.done)} locale={locale} />
+          <MonthView book={book} month={month} today={today} done={single(params.done)} role={role} locale={locale} />
         ) : (
-          <DayView book={book} day={day} edit={single(params.edit) === '1'} saved={single(params.saved) === '1'} locale={locale} />
+          <DayView book={book} day={day} edit={single(params.edit) === '1'} saved={single(params.saved) === '1'} role={role} locale={locale} />
         )}
       </BookTabs>
     </main>
   );
 }
 
-async function MonthView({ book, month, today, done, locale }) {
+async function MonthView({ book, month, today, done, role, locale }) {
   let entries = [];
   let problem = '';
   try {
@@ -130,6 +145,23 @@ async function MonthView({ book, month, today, done, locale }) {
   }
   const monthName = formatMonth(month, locale);
   const todayInRange = dayProblem(today) === null;
+  // Whether today has a page, asked only for a role that may write a new page
+  // but not change one (a Member), so "Write today" never opens a page that
+  // role can only read: from this month's marks when today is in it, else by
+  // reading the days of today's month once. Not known stays `null` (no button).
+  let todayHasPage = null;
+  if (todayInRange && canAdd(role) && !canChange(role)) {
+    if (monthOf(today) === month) {
+      todayHasPage = problem === '' ? entries.some((entry) => entry.date === today) : null;
+    } else {
+      try {
+        todayHasPage = (await readMonthDaysFor(DIARY_OWNER, book, monthOf(today))).includes(today);
+      } catch {
+        todayHasPage = null;
+      }
+    }
+  }
+  const writeToday = todayInRange && writeTodayShown(role, todayHasPage);
   const outline = buttonVariants({ variant: 'outline' });
   const arrow = buttonVariants({ variant: 'outline', size: 'icon' });
 
@@ -160,7 +192,7 @@ async function MonthView({ book, month, today, done, locale }) {
         <Link className={outline} href={monthAddress(book, clampMonth(monthOf(today)))}>
           {t('diary.thisMonth', locale)}
         </Link>
-        {todayInRange ? (
+        {writeToday ? (
           <Link className={cn(buttonVariants({ size: 'lg' }), 'ml-auto px-3.5')} href={dayAddress(book, today)}>
             <PenLine data-icon="inline-start" aria-hidden="true" />
             {t('diary.writeToday', locale)}
@@ -187,7 +219,7 @@ async function MonthView({ book, month, today, done, locale }) {
   );
 }
 
-async function DayView({ book, day, edit, saved, locale }) {
+async function DayView({ book, day, edit, saved, role, locale }) {
   let page = null;
   let problem = '';
   try {
@@ -198,7 +230,8 @@ async function DayView({ book, day, edit, saved, locale }) {
   const month = monthOf(day);
   const monthName = formatMonth(month, locale);
   const heading = fullDate(day, locale);
-  const writing = problem === '' && (page === null || edit);
+  // What this role sees of the day: the writing box only for a role that may write it (`lib/diary/roles.js`).
+  const { screen, controls } = dayScreen(role, page !== null, edit);
 
   return (
     <section className="flex flex-col gap-3" aria-label={heading}>
@@ -217,7 +250,11 @@ async function DayView({ book, day, edit, saved, locale }) {
             <p role="alert" className="problem">
               {t(problem, locale)}
             </p>
-          ) : writing ? (
+          ) : screen === 'empty' ? (
+            <Empty className="p-4">
+              <EmptyDescription>{t('diary.noPage', locale)}</EmptyDescription>
+            </Empty>
+          ) : screen === 'write' || screen === 'change' ? (
             <PageForm
               key={`${book}-${day}`}
               book={book}
@@ -239,19 +276,21 @@ async function DayView({ book, day, edit, saved, locale }) {
                   {t('diary.saved', locale)}
                 </p>
               ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Link className={buttonVariants({ variant: 'outline' })} href={`${dayAddress(book, day)}&edit=1`}>
-                  <PenLine data-icon="inline-start" aria-hidden="true" />
-                  {t('diary.change', locale)}
-                </Link>
-                <DeletePage
-                  book={book}
-                  day={day}
-                  monthHref={monthAddress(book, month)}
-                  body={t(`diary.deleteBody.${book}`, locale, { date: dayDate(day, locale) })}
-                  locale={locale}
-                />
-              </div>
+              {controls ? (
+                <div className="flex flex-wrap gap-2">
+                  <Link className={buttonVariants({ variant: 'outline' })} href={`${dayAddress(book, day)}&edit=1`}>
+                    <PenLine data-icon="inline-start" aria-hidden="true" />
+                    {t('diary.change', locale)}
+                  </Link>
+                  <DeletePage
+                    book={book}
+                    day={day}
+                    monthHref={monthAddress(book, month)}
+                    body={t(`diary.deleteBody.${book}`, locale, { date: dayDate(day, locale) })}
+                    locale={locale}
+                  />
+                </div>
+              ) : null}
             </>
           )}
         </CardContent>
